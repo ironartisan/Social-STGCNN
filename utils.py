@@ -19,6 +19,7 @@ import networkx as nx
 from tqdm import tqdm
 import time
 
+input_dim = 3
 
 def anorm(p1,p2): 
     NORM = math.sqrt((p1[0]-p2[0])**2+ (p1[1]-p2[1])**2)
@@ -33,7 +34,7 @@ def seq_to_graph(seq_,seq_rel,norm_lap_matr = True):
     max_nodes = seq_.shape[0]
 
     
-    V = np.zeros((seq_len,max_nodes,2))
+    V = np.zeros((seq_len,max_nodes,input_dim))
     A = np.zeros((seq_len,max_nodes,max_nodes))
     for s in range(seq_len):
         step_ = seq_[:,:,s]
@@ -120,7 +121,9 @@ class TrajectoryDataset(Dataset):
         non_linear_ped = []
         for path in all_files:
             data = read_file(path, delim)
+            # 获取id
             frames = np.unique(data[:, 0]).tolist()
+            # 以id进行划分，同一id为一组
             frame_data = []
             for frame in frames:
                 frame_data.append(data[frame == data[:, 0], :])
@@ -132,9 +135,9 @@ class TrajectoryDataset(Dataset):
                     frame_data[idx:idx + self.seq_len], axis=0)
                 peds_in_curr_seq = np.unique(curr_seq_data[:, 1])
                 self.max_peds_in_frame = max(self.max_peds_in_frame,len(peds_in_curr_seq))
-                curr_seq_rel = np.zeros((len(peds_in_curr_seq), 2,
+                curr_seq_rel = np.zeros((len(peds_in_curr_seq), input_dim,
                                          self.seq_len))
-                curr_seq = np.zeros((len(peds_in_curr_seq), 2, self.seq_len))
+                curr_seq = np.zeros((len(peds_in_curr_seq), input_dim, self.seq_len))
                 curr_loss_mask = np.zeros((len(peds_in_curr_seq),
                                            self.seq_len))
                 num_peds_considered = 0

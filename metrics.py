@@ -57,13 +57,14 @@ def seq_to_nodes(seq_,max_nodes = 88):
     seq_ = seq_.squeeze()
     seq_len = seq_.shape[2]
     
-    V = np.zeros((seq_len,max_nodes,2))
+    V = np.zeros((seq_len,max_nodes,3))
     for s in range(seq_len):
         step_ = seq_[:,:,s]
         for h in range(len(step_)): 
             V[s,h,:] = step_[h]
             
     return V.squeeze()
+
 
 def nodes_rel_to_nodes_abs(nodes,init_node):
     nodes_ = np.zeros_like(nodes)

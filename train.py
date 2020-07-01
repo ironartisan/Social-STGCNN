@@ -29,9 +29,9 @@ import torch.optim.lr_scheduler as lr_scheduler
 from model import *
 
 parser = argparse.ArgumentParser()
-
+torch.backends.cudnn.benchmark=True
 #Model specific parameters
-parser.add_argument('--input_size', type=int, default=2)
+parser.add_argument('--input_size', type=int, default=3)
 parser.add_argument('--output_size', type=int, default=5)
 parser.add_argument('--n_stgcnn', type=int, default=1,help='Number of ST-GCNN layers')
 parser.add_argument('--n_txpcnn', type=int, default=5, help='Number of TXPCNN layers')
@@ -40,11 +40,11 @@ parser.add_argument('--kernel_size', type=int, default=3)
 #Data specifc paremeters
 parser.add_argument('--obs_seq_len', type=int, default=8)
 parser.add_argument('--pred_seq_len', type=int, default=12)
-parser.add_argument('--dataset', default='eth',
+parser.add_argument('--dataset', default='china_with_normalization',
                     help='eth,hotel,univ,zara1,zara2')    
 
 #Training specifc parameters
-parser.add_argument('--batch_size', type=int, default=128,
+parser.add_argument('--batch_size', type=int, default=8,
                     help='minibatch size')
 parser.add_argument('--num_epochs', type=int, default=250,
                     help='number of epochs')  
@@ -56,16 +56,10 @@ parser.add_argument('--lr_sh_rate', type=int, default=150,
                     help='number of steps to drop the lr')  
 parser.add_argument('--use_lrschd', action="store_true", default=False,
                     help='Use lr rate scheduler')
-parser.add_argument('--tag', default='tag',
-                    help='personal tag for the model ')
+parser.add_argument('--social-stgcnn-china-with-normalization', default='social-stgcnn-china-with-normalization',
+                    help='personal social-stgcnn-china-with-normalization for the model ')
                     
 args = parser.parse_args()
-
-
-
-
-
-
 
 print('*'*30)
 print("Training initiating....")
@@ -163,17 +157,17 @@ def train(epoch):
         #Forward
         #V_obs = batch,seq,node,feat
         #V_obs_tmp = batch,feat,seq,node
-        V_obs_tmp =V_obs.permute(0,3,1,2)
+        V_obs_tmp =V_obs.permute(0,3,1,2).contiguous()
 
-        V_pred,_ = model(V_obs_tmp,A_obs.squeeze())
+        V_pred,_ = model(V_obs_tmp,A_obs.squeeze().contiguous())
         
-        V_pred = V_pred.permute(0,2,3,1)
+        V_pred = V_pred.permute(0,2,3,1).contiguous()
         
         
 
-        V_tr = V_tr.squeeze()
-        A_tr = A_tr.squeeze()
-        V_pred = V_pred.squeeze()
+        V_tr = V_tr.squeeze().contiguous()
+        A_tr = A_tr.squeeze().contiguous()
+        V_pred = V_pred.squeeze().contiguous()
 
         if batch_count%args.batch_size !=0 and cnt != turn_point :
             l = graph_loss(V_pred,V_tr)
@@ -220,15 +214,15 @@ def vald(epoch):
          loss_mask,V_obs,A_obs,V_tr,A_tr = batch
         
 
-        V_obs_tmp =V_obs.permute(0,3,1,2)
+        V_obs_tmp =V_obs.permute(0,3,1,2).contiguous()
 
-        V_pred,_ = model(V_obs_tmp,A_obs.squeeze())
+        V_pred,_ = model(V_obs_tmp,A_obs.squeeze().contiguous())
         
-        V_pred = V_pred.permute(0,2,3,1)
+        V_pred = V_pred.permute(0,2,3,1).contiguous()
         
-        V_tr = V_tr.squeeze()
-        A_tr = A_tr.squeeze()
-        V_pred = V_pred.squeeze()
+        V_tr = V_tr.squeeze().contiguous()
+        A_tr = A_tr.squeeze().contiguous()
+        V_pred = V_pred.squeeze().contiguous()
 
         if batch_count%args.batch_size !=0 and cnt != turn_point :
             l = graph_loss(V_pred,V_tr)
