@@ -31,7 +31,7 @@ from model import *
 parser = argparse.ArgumentParser()
 
 #Model specific parameters
-parser.add_argument('--input_size', type=int, default=2)
+parser.add_argument('--input_size', type=int, default=3)
 parser.add_argument('--output_size', type=int, default=5)
 parser.add_argument('--n_stgcnn', type=int, default=1,help='Number of ST-GCNN layers')
 parser.add_argument('--n_txpcnn', type=int, default=5, help='Number of TXPCNN layers')
@@ -40,13 +40,13 @@ parser.add_argument('--kernel_size', type=int, default=3)
 #Data specifc paremeters
 parser.add_argument('--obs_seq_len', type=int, default=8)
 parser.add_argument('--pred_seq_len', type=int, default=12)
-parser.add_argument('--dataset', default='eth',
+parser.add_argument('--dataset', default='asia4_smooth',
                     help='eth,hotel,univ,zara1,zara2')    
 
 #Training specifc parameters
 parser.add_argument('--batch_size', type=int, default=128,
                     help='minibatch size')
-parser.add_argument('--num_epochs', type=int, default=250,
+parser.add_argument('--num_epochs', type=int, default=5,
                     help='number of epochs')  
 parser.add_argument('--clip_grad', type=float, default=None,
                     help='gadient clipping')        
@@ -60,11 +60,6 @@ parser.add_argument('--tag', default='tag',
                     help='personal tag for the model ')
                     
 args = parser.parse_args()
-
-
-
-
-
 
 
 print('*'*30)
@@ -219,9 +214,10 @@ def vald(epoch):
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped,\
          loss_mask,V_obs,A_obs,V_tr,A_tr = batch
         
-
+        # [1,8,18,3]->[1,3,8,18]
         V_obs_tmp =V_obs.permute(0,3,1,2)
 
+        #
         V_pred,_ = model(V_obs_tmp,A_obs.squeeze())
         
         V_pred = V_pred.permute(0,2,3,1)

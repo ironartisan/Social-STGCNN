@@ -33,7 +33,7 @@ def seq_to_graph(seq_,seq_rel,norm_lap_matr = True):
     max_nodes = seq_.shape[0]
 
     
-    V = np.zeros((seq_len,max_nodes,2))
+    V = np.zeros((seq_len,max_nodes,3))
     A = np.zeros((seq_len,max_nodes,max_nodes))
     for s in range(seq_len):
         step_ = seq_[:,:,s]
@@ -130,11 +130,12 @@ class TrajectoryDataset(Dataset):
             for idx in range(0, num_sequences * self.skip + 1, skip):
                 curr_seq_data = np.concatenate(
                     frame_data[idx:idx + self.seq_len], axis=0)
+                # 一个时间序列中的id
                 peds_in_curr_seq = np.unique(curr_seq_data[:, 1])
                 self.max_peds_in_frame = max(self.max_peds_in_frame,len(peds_in_curr_seq))
-                curr_seq_rel = np.zeros((len(peds_in_curr_seq), 2,
+                curr_seq_rel = np.zeros((len(peds_in_curr_seq), 3,
                                          self.seq_len))
-                curr_seq = np.zeros((len(peds_in_curr_seq), 2, self.seq_len))
+                curr_seq = np.zeros((len(peds_in_curr_seq), 3, self.seq_len))
                 curr_loss_mask = np.zeros((len(peds_in_curr_seq),
                                            self.seq_len))
                 num_peds_considered = 0
