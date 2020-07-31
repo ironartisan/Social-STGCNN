@@ -127,7 +127,7 @@ def test(KSTEPS=20):
 
 
 # paths = ['./checkpoint/*social-stgcnn*']
-paths = ['./checkpoint/social-stgcnn-china-with-normalization']
+paths = ['./checkpoint/social-stgcnn-asia']
 KSTEPS=20
 
 print("*"*50)

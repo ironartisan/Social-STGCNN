@@ -1,6 +1,7 @@
 import os
 import math
 import sys
+import pickle as pkl
 
 import torch
 import torch.nn as nn
@@ -86,7 +87,7 @@ def read_file(_path, delim='\t'):
 class TrajectoryDataset(Dataset):
     """Dataloder for the Trajectory datasets"""
     def __init__(
-        self, data_dir, obs_len=8, pred_len=8, skip=1, threshold=0.002,
+        self, data_dir, dataset, obs_len=8, pred_len=8, skip=1, threshold=0.002,
         min_ped=1, delim='\t',norm_lap_matr = True):
         """
         Args:
@@ -110,6 +111,10 @@ class TrajectoryDataset(Dataset):
         self.seq_len = self.obs_len + self.pred_len
         self.delim = delim
         self.norm_lap_matr = norm_lap_matr
+        self.outfile = 'datasets/' + dataset + "processed.pkl"
+        print(self.outfile)
+
+
 
         all_files = os.listdir(self.data_dir)
         all_files = [os.path.join(self.data_dir, _path) for _path in all_files]
@@ -175,42 +180,64 @@ class TrajectoryDataset(Dataset):
         seq_list_rel = np.concatenate(seq_list_rel, axis=0)
         loss_mask_list = np.concatenate(loss_mask_list, axis=0)
         non_linear_ped = np.asarray(non_linear_ped)
+        if not os.path.exists(self.outfile):
+            # Convert numpy -> Torch Tensor
+            self.obs_traj = torch.from_numpy(
+                seq_list[:, :, :self.obs_len]).type(torch.float)
+            self.pred_traj = torch.from_numpy(
+                seq_list[:, :, self.obs_len:]).type(torch.float)
+            self.obs_traj_rel = torch.from_numpy(
+                seq_list_rel[:, :, :self.obs_len]).type(torch.float)
+            self.pred_traj_rel = torch.from_numpy(
+                seq_list_rel[:, :, self.obs_len:]).type(torch.float)
+            self.loss_mask = torch.from_numpy(loss_mask_list).type(torch.float)
+            self.non_linear_ped = torch.from_numpy(non_linear_ped).type(torch.float)
+            cum_start_idx = [0] + np.cumsum(num_peds_in_seq).tolist()
+            self.seq_start_end = [
+                (start, end)
+                for start, end in zip(cum_start_idx, cum_start_idx[1:])
+            ]
+            #Convert to Graphs
+            self.v_obs = []
+            self.A_obs = []
+            self.v_pred = []
+            self.A_pred = []
+            print("Processing Data .....")
+            pbar = tqdm(total=len(self.seq_start_end))
+            for ss in range(len(self.seq_start_end)):
+                pbar.update(1)
 
-        # Convert numpy -> Torch Tensor
-        self.obs_traj = torch.from_numpy(
-            seq_list[:, :, :self.obs_len]).type(torch.float)
-        self.pred_traj = torch.from_numpy(
-            seq_list[:, :, self.obs_len:]).type(torch.float)
-        self.obs_traj_rel = torch.from_numpy(
-            seq_list_rel[:, :, :self.obs_len]).type(torch.float)
-        self.pred_traj_rel = torch.from_numpy(
-            seq_list_rel[:, :, self.obs_len:]).type(torch.float)
-        self.loss_mask = torch.from_numpy(loss_mask_list).type(torch.float)
-        self.non_linear_ped = torch.from_numpy(non_linear_ped).type(torch.float)
-        cum_start_idx = [0] + np.cumsum(num_peds_in_seq).tolist()
-        self.seq_start_end = [
-            (start, end)
-            for start, end in zip(cum_start_idx, cum_start_idx[1:])
-        ]
-        #Convert to Graphs 
-        self.v_obs = [] 
-        self.A_obs = [] 
-        self.v_pred = [] 
-        self.A_pred = [] 
-        print("Processing Data .....")
-        pbar = tqdm(total=len(self.seq_start_end)) 
-        for ss in range(len(self.seq_start_end)):
-            pbar.update(1)
+                start, end = self.seq_start_end[ss]
 
-            start, end = self.seq_start_end[ss]
+                v_,a_ = seq_to_graph(self.obs_traj[start:end,:],self.obs_traj_rel[start:end, :],self.norm_lap_matr)
+                self.v_obs.append(v_.clone())
+                self.A_obs.append(a_.clone())
+                v_,a_=seq_to_graph(self.pred_traj[start:end,:],self.pred_traj_rel[start:end, :],self.norm_lap_matr)
+                self.v_pred.append(v_.clone())
+                self.A_pred.append(a_.clone())
+            pbar.close()
 
-            v_,a_ = seq_to_graph(self.obs_traj[start:end,:],self.obs_traj_rel[start:end, :],self.norm_lap_matr)
-            self.v_obs.append(v_.clone())
-            self.A_obs.append(a_.clone())
-            v_,a_=seq_to_graph(self.pred_traj[start:end,:],self.pred_traj_rel[start:end, :],self.norm_lap_matr)
-            self.v_pred.append(v_.clone())
-            self.A_pred.append(a_.clone())
-        pbar.close()
+            out_data = {"seq_start_end": self.seq_start_end, "obs_traj": self.obs_traj, "obs_traj_rel": self.obs_traj_rel,
+                        "non_linear_ped": self.non_linear_ped, "v_obs": self.v_obs, "v_pred": self.v_pred,"A_obs": self.A_obs,
+                        "A_pred": self.A_pred, "pred_traj":self.pred_traj, "pred_traj_rel":self.pred_traj_rel,
+                        "loss_mask":self.loss_mask, "num_seq": self.num_seq}
+
+            pkl.dump(out_data, open(self.outfile, 'wb'))
+        else:
+            data = pkl.load(open(self.outfile, 'rb'))
+            self.seq_start_end = data["seq_start_end"]
+            self.obs_traj = data["obs_traj"]
+            self.obs_traj_rel = data["obs_traj_rel"]
+            self.non_linear_ped = data["non_linear_ped"]
+            self.v_obs = data["v_obs"]
+            self.v_pred = data["v_pred"]
+            self.A_obs = data["A_obs"]
+            self.A_pred = data["A_pred"]
+            self.num_seq = data["num_seq"]
+            self.pred_traj = data["pred_traj"]
+            self.pred_traj_rel = data["pred_traj_rel"]
+            self.loss_mask = data["loss_mask"]
+
 
     def __len__(self):
         return self.num_seq

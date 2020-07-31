@@ -27,7 +27,8 @@ import argparse
 from torch import autograd
 import torch.optim.lr_scheduler as lr_scheduler
 from model import *
-
+# torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.enabled = False
 parser = argparse.ArgumentParser()
 
 #Model specific parameters
@@ -40,11 +41,11 @@ parser.add_argument('--kernel_size', type=int, default=3)
 #Data specifc paremeters
 parser.add_argument('--obs_seq_len', type=int, default=8)
 parser.add_argument('--pred_seq_len', type=int, default=12)
-parser.add_argument('--dataset', default='asia4_smooth',
+parser.add_argument('--dataset', default='asia',
                     help='eth,hotel,univ,zara1,zara2')    
 
 #Training specifc parameters
-parser.add_argument('--batch_size', type=int, default=128,
+parser.add_argument('--batch_size', type=int, default=4,
                     help='minibatch size')
 parser.add_argument('--num_epochs', type=int, default=5,
                     help='number of epochs')  
@@ -77,6 +78,7 @@ data_set = './datasets/'+args.dataset+'/'
 
 dset_train = TrajectoryDataset(
         data_set+'train/',
+        args.dataset+'/pkl_train/',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
         skip=1,norm_lap_matr=True)
@@ -90,6 +92,7 @@ loader_train = DataLoader(
 
 dset_val = TrajectoryDataset(
         data_set+'val/',
+        args.dataset+'/pkl_val/',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
         skip=1,norm_lap_matr=True)
